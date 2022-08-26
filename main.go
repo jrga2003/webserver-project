@@ -5,11 +5,7 @@ import (
 )
 
 func main() {
-	// http.HandleFunc("/companies", addCompany)
-	// http.HandleFunc("/companies", getCompanies)
-	// http.HandleFunc("/companies", getCompany)
-	// http.HandleFunc("/companies", updateCompany)
-	// http.HandleFunc("/companies", deleteCompany)
+	http.ListenAndServe(":8090", nil)
 }
 
 func handleCompany(req http.Request) {

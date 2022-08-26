@@ -1,22 +1,32 @@
 package main
 
 import (
-	"fmt"
+	"net/http"
 )
 
 func main() {
-	// Submits entity to specified resource, changing its state
-	//resp, err := http.Post("companies.com", Company, ...)
-	// Requests a representation of the specified resource
-	// Company's attributes should be available to filter
-	//resp, err := http.Get("companies.com")
-	//http.HandleFunc("/addCompany", addCompany)
+	// http.HandleFunc("/companies", addCompany)
+	// http.HandleFunc("/companies", getCompanies)
+	// http.HandleFunc("/companies", getCompany)
+	// http.HandleFunc("/companies", updateCompany)
+	// http.HandleFunc("/companies", deleteCompany)
+}
 
-	var monk Company = Company{"Monk", "1", "Poland", "www.monk.io", "+447736705394"}
-	//fmt.Printf("%+v", monk)
-	//fmt.Print(monk)
-	companyList = append(companyList, monk)
-	fmt.Println(companyList)
-	a := fmt.Sprintf("%+v", companyList)
-	fmt.Println(a)
+func handleCompany(req http.Request) {
+	url := req.URL.String()
+	if url == "/companies" {
+		if req.Method == "POST" {
+			http.HandleFunc(url, addCompany)
+		} else {
+			http.HandleFunc(url, getCompanies)
+		}
+	} else {
+		if req.Method == "" { // For client request "" means GET
+			http.HandleFunc(url, getCompany)
+		} else if req.Method == "PUT" {
+			http.HandleFunc(url, updateCompany)
+		} else {
+			http.HandleFunc(url, deleteCompany)
+		}
+	}
 }

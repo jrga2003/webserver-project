@@ -12,19 +12,17 @@ import (
 // Creates a new company
 // Http request: POST /companies
 func addCompany(w http.ResponseWriter, req *http.Request) {
-	if strings.EqualFold(req.Method, "POST") {
-		messageBody, err := io.ReadAll(req.Body)
-		if err != nil {
-			log.Fatal(err) // print error
-		}
-		var company Company
-		err = json.Unmarshal(messageBody, &company)
-		if err != nil {
-			log.Fatal(err)
-		}
-		companyList = append(companyList, company)
-		fmt.Fprintf(w, "Succesfully added the company")
+	messageBody, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Fatal(err) // print error
 	}
+	var company Company
+	err = json.Unmarshal(messageBody, &company)
+	if err != nil {
+		log.Fatal(err)
+	}
+	companyList = append(companyList, company)
+	fmt.Fprintf(w, "Succesfully added the company")
 }
 
 // Retrieve all companies
@@ -35,7 +33,7 @@ func getCompanies(w http.ResponseWriter, req *http.Request) {
 }
 
 // Retrieves the details of company with <id>
-// Http request: GET /companies/:id
+// Http request: GET /companies/id
 func getCompany(w http.ResponseWriter, req *http.Request) {
 	// Retrieve the id from URL
 	url := req.URL.String()
@@ -45,13 +43,13 @@ func getCompany(w http.ResponseWriter, req *http.Request) {
 	for _, company := range companyList {
 		companyId := company.Code
 		if strings.EqualFold(id, companyId) {
-			return fmt.Fprintf(w, "%v", company)
+			fmt.Fprintf(w, "%v", company)
 		}
 	}
 }
 
 // Update details of company with <id> if it exists
-// Http request: PUT /companies/:id
+// Http request: PUT /companies/id
 func updateCompany(w http.ResponseWriter, req *http.Request) {
 	var updatedCompany Company
 
@@ -74,13 +72,13 @@ func updateCompany(w http.ResponseWriter, req *http.Request) {
 		companyId := company.Code
 		if strings.EqualFold(id, companyId) {
 			companyList[i] = updatedCompany
-			return fmt.Fprintf(w, "Succesfully updated company details")
+			fmt.Fprintf(w, "Succesfully updated company details")
 		}
 	}
 }
 
 // Remove company with <id>
-// Http request: DELETE /companies/:id
+// Http request: DELETE /companies/id
 func deleteCompany(w http.ResponseWriter, req *http.Request) {
 	// Retrieve the id from URL
 	url := req.URL.String()
@@ -98,8 +96,8 @@ func deleteCompany(w http.ResponseWriter, req *http.Request) {
 }
 
 // Given a list of companies, and in index to remove,
-// the following function removes the company at the given
-// index
+// the following function returns a copy of the original
+// with company at the given index removed
 func remove(s []Company, i int) []Company {
 	s[i] = s[len(s)-1]
 	return s[:len(s)-1]

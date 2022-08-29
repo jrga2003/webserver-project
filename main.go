@@ -5,24 +5,25 @@ import (
 )
 
 func main() {
+	http.HandleFunc("/companies", handleCompany)
 	http.ListenAndServe(":8090", nil)
 }
 
-func handleCompany(req http.Request) {
+func handleCompany(w http.ResponseWriter, req *http.Request) {
 	url := req.URL.String()
 	if url == "/companies" {
 		if req.Method == "POST" {
-			http.HandleFunc(url, addCompany)
+			addCompany(w, req)
 		} else {
-			http.HandleFunc(url, getCompanies)
+			getCompanies(w, req)
 		}
 	} else {
 		if req.Method == "" { // For client request "" means GET
-			http.HandleFunc(url, getCompany)
+			getCompany(w, req)
 		} else if req.Method == "PUT" {
-			http.HandleFunc(url, updateCompany)
+			updateCompany(w, req)
 		} else {
-			http.HandleFunc(url, deleteCompany)
+			deleteCompany(w, req)
 		}
 	}
 }

@@ -39,12 +39,17 @@ func getCompany(w http.ResponseWriter, req *http.Request) {
 	url := req.URL.String()
 	id := strings.ReplaceAll(url, "/companies/", "")
 
+	var found bool
 	// find id from companyList
 	for _, company := range companyList {
 		companyId := company.Code
 		if strings.EqualFold(id, companyId) {
 			fmt.Fprintf(w, "%v", company)
+			found = true
 		}
+	}
+	if !found {
+		fmt.Fprintf(w, "Could not find the company with identifier "+id)
 	}
 }
 
@@ -68,12 +73,18 @@ func updateCompany(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// find id in companyList
+	var found bool
 	for i, company := range companyList {
 		companyId := company.Code
 		if strings.EqualFold(id, companyId) {
 			companyList[i] = updatedCompany
+			found = true
 			fmt.Fprintf(w, "Succesfully updated company details")
 		}
+	}
+
+	if !found {
+		fmt.Fprintf(w, "Not able to update company details")
 	}
 }
 
@@ -85,14 +96,21 @@ func deleteCompany(w http.ResponseWriter, req *http.Request) {
 	id := strings.ReplaceAll(url, "/companies/", "")
 
 	var indexToDelete int
+	var found bool
 	for i, company := range companyList {
 		companyId := company.Code
 		if strings.EqualFold(id, companyId) {
 			indexToDelete = i
+			found = true
 		}
 	}
 	// Delete element at indexToDelete
-	companyList = remove(companyList, indexToDelete)
+	if found {
+		companyList = remove(companyList, indexToDelete)
+		fmt.Fprintf(w, "Succesfully removed company")
+	} else {
+		fmt.Fprintf(w, "Was not able to find company with specified dentifier")
+	}
 }
 
 // Given a list of companies, and in index to remove,

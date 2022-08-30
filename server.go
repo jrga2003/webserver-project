@@ -14,7 +14,7 @@ import (
 func addCompany(w http.ResponseWriter, req *http.Request) {
 	messageBody, err := io.ReadAll(req.Body)
 	if err != nil {
-		log.Fatal(err) // print error
+		log.Fatal(err)
 	}
 	var company Company
 	err = json.Unmarshal(messageBody, &company)
@@ -22,7 +22,7 @@ func addCompany(w http.ResponseWriter, req *http.Request) {
 		log.Fatal(err)
 	}
 	companyList = append(companyList, company)
-	fmt.Fprintf(w, "Succesfully added the company")
+	fmt.Fprintf(w, "Succesfully added the company: \n"+string(messageBody))
 }
 
 // Retrieve all companies
@@ -59,8 +59,8 @@ func updateCompany(w http.ResponseWriter, req *http.Request) {
 	var updatedCompany Company
 
 	// Retrieve the id from URL
-	url := req.URL.String()
-	id := strings.ReplaceAll(url, "/companies/", "")
+	var url string = req.URL.String()
+	var id string = strings.ReplaceAll(url, "/companies/", "")
 
 	// Retrieve updated company details from body of request message
 	requestBody, err := io.ReadAll(req.Body)
@@ -76,13 +76,12 @@ func updateCompany(w http.ResponseWriter, req *http.Request) {
 	var found bool
 	for i, company := range companyList {
 		companyId := company.Code
-		if strings.EqualFold(id, companyId) {
+		if companyId == id {
 			companyList[i] = updatedCompany
 			found = true
-			fmt.Fprintf(w, "Succesfully updated company details")
+			fmt.Fprintf(w, "Succesfully updated company details: \n"+string(requestBody))
 		}
 	}
-
 	if !found {
 		fmt.Fprintf(w, "Not able to update company details")
 	}
@@ -92,24 +91,30 @@ func updateCompany(w http.ResponseWriter, req *http.Request) {
 // Http request: DELETE /companies/id
 func deleteCompany(w http.ResponseWriter, req *http.Request) {
 	// Retrieve the id from URL
-	url := req.URL.String()
-	id := strings.ReplaceAll(url, "/companies/", "")
+	var url string = req.URL.String()
+	var id string = strings.ReplaceAll(url, "/companies/", "")
 
-	var indexToDelete int
 	var found bool
+	var indexToDelete int
 	for i, company := range companyList {
 		companyId := company.Code
-		if strings.EqualFold(id, companyId) {
+		if companyId == id {
 			indexToDelete = i
 			found = true
 		}
 	}
 	// Delete element at indexToDelete
 	if found {
+		var removedCompany Company = companyList[indexToDelete]
 		companyList = remove(companyList, indexToDelete)
-		fmt.Fprintf(w, "Succesfully removed company")
+		b, err := json.Marshal(removedCompany)
+		if err != nil {
+			log.Fatal(err)
+		} else {
+			fmt.Fprintf(w, "Succesfully removed company: \n"+string(b))
+		}
 	} else {
-		fmt.Fprintf(w, "Was not able to find company with specified dentifier")
+		fmt.Fprintf(w, "Could not find company with identifier "+id)
 	}
 }
 

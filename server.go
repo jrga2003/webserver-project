@@ -27,9 +27,65 @@ func addCompany(w http.ResponseWriter, req *http.Request) {
 
 // Retrieve all companies
 // Http request: GET /companies
+// NOTE: Client should be able to filter list response by 
+// company properties using request query 
 func getCompanies(w http.ResponseWriter, req *http.Request) {
-	stringToPrint := fmt.Sprintf("%+v", companyList)
-	fmt.Fprintf(w, stringToPrint)
+	var query string = req.URL.Query().Encode()
+	var propertyFilters map[string]string = parseQuery(query)
+
+	if propertyFilters == nil {
+		stringToPrint := fmt.Sprintf("%+v", companyList)
+		fmt.Fprintf(w, stringToPrint)
+	} else {
+		var companiesToReturn []Company
+		for filter, value := range propertyFilters {
+			for _, company := range companyList {
+				switch filter {
+				case "Name":
+					if company.Name == value {
+						companiesToReturn = append(companiesToReturn, company)
+					}
+				case "Code":
+					if company.Code == value {
+						companiesToReturn = append(companiesToReturn, company)
+					}
+				case "Country":
+					if company.Country == value {
+						companiesToReturn = append(companiesToReturn, company)
+					}
+				case "Website":
+					if company.Website == value {
+						companiesToReturn = append(companiesToReturn, company)
+					}
+				case "Phone":
+					if company.Phone == value {
+						companiesToReturn = append(companiesToReturn, company)
+					}
+				default:
+					fmt.Fprintf(w, "The property " + filter + " does not exist for the entity Company")
+				}
+			}
+		}
+	}
+}
+
+// The following is a helper function for the getCompanies function
+// above. It is used to convert the query as part of a http request
+// to a map which matches company properties to values.
+// E.g.
+// q: "Code=1&Website=HomeDepot" --> map["Code":"1" "Website":"HomeDepot"]
+func parseQuery(q string) map[string]string {
+	var chars []rune = []rune(q)
+	var m map[string]string = make(map[string]string)
+
+	for i, letter := range chars {
+		if letter == '=' {
+			var property string =  // traverse backwards until you find ampersand character
+			var value string = // traverse forwards until you find ampersand character
+			m[property] = value
+		}
+	}
+	return m
 }
 
 // Retrieves the details of company with <id>

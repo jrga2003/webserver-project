@@ -9,7 +9,3 @@ type Company struct {
 	Website string
 	Phone   string
 }
-
-func (c Company) String() string {
-	return "{" + "Name: " + c.Name + " Code: " + c.Code + " Country: " + c.Country + " Website: " + c.Website + " Phone: " + c.Phone + "}"
-}

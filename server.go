@@ -32,42 +32,39 @@ func addCompany(w http.ResponseWriter, req *http.Request) {
 func getCompanies(w http.ResponseWriter, req *http.Request) {
 	var query string = req.URL.Query().Encode()
 	var propertyFilters map[string]string = parseQuery(query)
-	fmt.Fprintf(w, "%v \n", propertyFilters)
+	var companiesToReturn []Company = companyList
 
-	if len(propertyFilters) == 0 {
-		fmt.Fprintf(w, "%+v", companyList)
-	} else {
-		var companiesToReturn []Company
-		for filter, value := range propertyFilters {
-			for _, company := range companyList {
-				switch filter {
-				case "Name":
-					if company.Name == value {
-						companiesToReturn = append(companiesToReturn, company)
-					}
-				case "Code":
-					if company.Code == value {
-						companiesToReturn = append(companiesToReturn, company)
-					}
-				case "Country":
-					if company.Country == value {
-						companiesToReturn = append(companiesToReturn, company)
-					}
-				case "Website":
-					if company.Website == value {
-						companiesToReturn = append(companiesToReturn, company)
-					}
-				case "Phone":
-					if company.Phone == value {
-						companiesToReturn = append(companiesToReturn, company)
-					}
-				default:
-					//fmt.Fprintf(w, filter+" : "+value+"\n")
+	for filter, value := range propertyFilters {
+		var updatedCompanies []Company
+		for _, company := range companiesToReturn {
+			switch filter {
+			case "Name":
+				if company.Name == value {
+					updatedCompanies = append(updatedCompanies, company)
 				}
+			case "Code":
+				if company.Code == value {
+					updatedCompanies = append(updatedCompanies, company)
+				}
+			case "Country":
+				if company.Country == value {
+					updatedCompanies = append(updatedCompanies, company)
+				}
+			case "Website":
+				if company.Website == value {
+					updatedCompanies = append(updatedCompanies, company)
+				}
+			case "Phone":
+				if company.Phone == value {
+					updatedCompanies = append(updatedCompanies, company)
+				}
+			default:
+				//fmt.Fprintf(w, filter+" : "+value+"\n")
 			}
 		}
-		fmt.Fprintf(w, "%+v", companiesToReturn)
+		companiesToReturn = updatedCompanies
 	}
+	fmt.Fprintf(w, "%+v", companiesToReturn)
 }
 
 // The following is a helper function for the getCompanies function

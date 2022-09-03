@@ -32,7 +32,7 @@ func addCompany(w http.ResponseWriter, req *http.Request) {
 func getCompanies(w http.ResponseWriter, req *http.Request) {
 	var query string = req.URL.Query().Encode()
 	var propertyFilters map[string]string = parseQuery(query)
-	fmt.Fprintf(w, "%v", propertyFilters)
+	fmt.Fprintf(w, "%v \n", propertyFilters)
 
 	if len(propertyFilters) == 0 {
 		fmt.Fprintf(w, "%+v", companyList)
@@ -77,19 +77,22 @@ func getCompanies(w http.ResponseWriter, req *http.Request) {
 // q: "Code=1&Website=HomeDepot" --> map["Code":"1" "Website":"HomeDepot"]
 // q: "Name=R" --> map["Name":"R"]
 // q: "Country=L&Website=randomwebsite.com" --> map["Country":"L" "Website":"randomwebsite.com"]
-// q: "Phone=439578456&Country=France" --> map["Phone":"439578456" "Country":"France"]
+// q: "Name=Penguin&Website=penguin.com" --> map["Name":"Penguin" "Website":"penguin.com"]
 func parseQuery(q string) map[string]string {
 	var chars []rune = []rune(q)
 	var m map[string]string = make(map[string]string)
 
 	for index, letter := range chars {
-		fmt.Println("Index number: ", index, ", Letter: ", letter)
 		if letter == '=' {
-			fmt.Printf("%v ", index)
 			var property string // traverse backwards until you find ampersand character
 			for i := index - 1; i >= 0; i-- {
-				if chars[i] == '&' || i == 0 {
+				if i == 0 {
 					property = string(chars[i:index])
+					break
+				}
+				if chars[i] == '&' {
+					property = string(chars[i+1 : index])
+					break
 				}
 			}
 
@@ -97,12 +100,13 @@ func parseQuery(q string) map[string]string {
 			for i := index + 1; i < len(chars); i++ {
 				if chars[i] == '&' {
 					value = string(chars[index+1 : i])
+					break
 				}
 				if i == len(chars)-1 {
 					value = string(chars[index+1 : i+1])
+					break
 				}
 			}
-			fmt.Println(property + " : " + value)
 			m[property] = value
 		}
 	}

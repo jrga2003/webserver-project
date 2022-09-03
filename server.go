@@ -27,15 +27,15 @@ func addCompany(w http.ResponseWriter, req *http.Request) {
 
 // Retrieve all companies
 // Http request: GET /companies
-// NOTE: Client should be able to filter list response by 
-// company properties using request query 
+// NOTE: Client should be able to filter list response by
+// company properties using request query
 func getCompanies(w http.ResponseWriter, req *http.Request) {
 	var query string = req.URL.Query().Encode()
 	var propertyFilters map[string]string = parseQuery(query)
+	fmt.Fprintf(w, "%v", propertyFilters)
 
-	if propertyFilters == nil {
-		stringToPrint := fmt.Sprintf("%+v", companyList)
-		fmt.Fprintf(w, stringToPrint)
+	if len(propertyFilters) == 0 {
+		fmt.Fprintf(w, "%+v", companyList)
 	} else {
 		var companiesToReturn []Company
 		for filter, value := range propertyFilters {
@@ -62,10 +62,11 @@ func getCompanies(w http.ResponseWriter, req *http.Request) {
 						companiesToReturn = append(companiesToReturn, company)
 					}
 				default:
-					fmt.Fprintf(w, "The property " + filter + " does not exist for the entity Company")
+					//fmt.Fprintf(w, filter+" : "+value+"\n")
 				}
 			}
 		}
+		fmt.Fprintf(w, "%+v", companiesToReturn)
 	}
 }
 
@@ -74,14 +75,34 @@ func getCompanies(w http.ResponseWriter, req *http.Request) {
 // to a map which matches company properties to values.
 // E.g.
 // q: "Code=1&Website=HomeDepot" --> map["Code":"1" "Website":"HomeDepot"]
+// q: "Name=R" --> map["Name":"R"]
+// q: "Country=L&Website=randomwebsite.com" --> map["Country":"L" "Website":"randomwebsite.com"]
+// q: "Phone=439578456&Country=France" --> map["Phone":"439578456" "Country":"France"]
 func parseQuery(q string) map[string]string {
 	var chars []rune = []rune(q)
 	var m map[string]string = make(map[string]string)
 
-	for i, letter := range chars {
+	for index, letter := range chars {
+		fmt.Println("Index number: ", index, ", Letter: ", letter)
 		if letter == '=' {
-			var property string =  // traverse backwards until you find ampersand character
-			var value string = // traverse forwards until you find ampersand character
+			fmt.Printf("%v ", index)
+			var property string // traverse backwards until you find ampersand character
+			for i := index - 1; i >= 0; i-- {
+				if chars[i] == '&' || i == 0 {
+					property = string(chars[i:index])
+				}
+			}
+
+			var value string // traverse forwards until you find ampersand character
+			for i := index + 1; i < len(chars); i++ {
+				if chars[i] == '&' {
+					value = string(chars[index+1 : i])
+				}
+				if i == len(chars)-1 {
+					value = string(chars[index+1 : i+1])
+				}
+			}
+			fmt.Println(property + " : " + value)
 			m[property] = value
 		}
 	}

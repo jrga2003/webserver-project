@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 )
@@ -14,15 +13,15 @@ import (
 func addCompany(w http.ResponseWriter, req *http.Request) {
 	messageBody, err := io.ReadAll(req.Body)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(w, "addCompany: "+err.Error())
 	}
 	var company Company
 	err = json.Unmarshal(messageBody, &company)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(w, "addCompany: "+err.Error())
 	}
 	companyList = append(companyList, company)
-	fmt.Fprintf(w, "Succesfully added the company: \n"+string(messageBody))
+	fmt.Fprintf(w, "Succesfully added the company:\n"+string(messageBody))
 }
 
 // Retrieve all companies
@@ -64,7 +63,11 @@ func getCompanies(w http.ResponseWriter, req *http.Request) {
 		}
 		companiesToReturn = updatedCompanies
 	}
-	fmt.Fprintf(w, "%+v", companiesToReturn)
+	if len(companiesToReturn) == 0 {
+		fmt.Fprintf(w, "Found no companies\n")
+	} else {
+		fmt.Fprintf(w, "Companies found: %+v\n", companiesToReturn)
+	}
 }
 
 // The following is a helper function for the getCompanies function
@@ -121,13 +124,13 @@ func getCompany(w http.ResponseWriter, req *http.Request) {
 	// find id from companyList
 	for _, company := range companyList {
 		companyId := company.Code
-		if strings.EqualFold(id, companyId) {
-			fmt.Fprintf(w, "%v", company)
+		if id == companyId {
+			fmt.Fprintf(w, "Company found: %v\n", company)
 			found = true
 		}
 	}
 	if !found {
-		fmt.Fprintf(w, "Could not find the company with identifier "+id)
+		fmt.Fprintf(w, "getCompany: Could not find the company with identifier "+id)
 	}
 }
 
@@ -143,11 +146,11 @@ func updateCompany(w http.ResponseWriter, req *http.Request) {
 	// Retrieve updated company details from body of request message
 	requestBody, err := io.ReadAll(req.Body)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(w, err.Error())
 	}
 	err = json.Unmarshal(requestBody, &updatedCompany)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(w, err.Error())
 	}
 
 	// find id in companyList
@@ -161,7 +164,7 @@ func updateCompany(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	if !found {
-		fmt.Fprintf(w, "Not able to update company details")
+		fmt.Fprintf(w, "updateCompany: Could not find the company with the id "+id)
 	}
 }
 
@@ -187,12 +190,12 @@ func deleteCompany(w http.ResponseWriter, req *http.Request) {
 		companyList = remove(companyList, indexToDelete)
 		b, err := json.Marshal(removedCompany)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Fprintf(w, "deleteCompany: "+err.Error())
 		} else {
 			fmt.Fprintf(w, "Succesfully removed company: \n"+string(b))
 		}
 	} else {
-		fmt.Fprintf(w, "Could not find company with identifier "+id)
+		fmt.Fprintf(w, "deleteCompany: Could not find company with identifier "+id)
 	}
 }
 

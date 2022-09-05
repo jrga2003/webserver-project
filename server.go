@@ -1,27 +1,39 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
 // Creates a new company
 // Http request: POST /companies
 func addCompany(w http.ResponseWriter, req *http.Request) {
+	// Decode JSON in message body into instance of type company
 	messageBody, err := io.ReadAll(req.Body)
 	if err != nil {
-		fmt.Fprintf(w, "addCompany: "+err.Error())
+		fmt.Fprintf(w, "addCompany: %v", err)
 	}
 	var company Company
 	err = json.Unmarshal(messageBody, &company)
 	if err != nil {
-		fmt.Fprintf(w, "addCompany: "+err.Error())
+		fmt.Fprintf(w, "addCompany: %v", err)
 	}
-	companyList = append(companyList, company)
-	fmt.Fprintf(w, "Succesfully added the company:\n"+string(messageBody))
+
+	// add company to databases
+	result, err := db.Exec("INSERT INTO companies (name, country, website, phone) VALUES (?, ?, ?)", company.Name, company.Country, company.Website, company.Phone)
+	if err != nil {
+		fmt.Fprintf(w, "addCompany: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		fmt.Fprintf(w, "addCompany: %v", err)
+	}
+	fmt.Fprintf(w, "Succesfully added the company with id %d:\n"+string(messageBody), id)
 }
 
 // Retrieve all companies
@@ -31,11 +43,13 @@ func addCompany(w http.ResponseWriter, req *http.Request) {
 func getCompanies(w http.ResponseWriter, req *http.Request) {
 	var query string = req.URL.Query().Encode()
 	var propertyFilters map[string]string = parseQuery(query)
-	var companiesToReturn []Company = companyList
+	var companies []Company = companyList
+
+	//rows, err := db.Query("SELECT * FROM companies WHERE ")
 
 	for filter, value := range propertyFilters {
 		var updatedCompanies []Company
-		for _, company := range companiesToReturn {
+		for _, company := range companies {
 			switch filter {
 			case "Name":
 				if company.Name == value {
@@ -61,12 +75,12 @@ func getCompanies(w http.ResponseWriter, req *http.Request) {
 				//fmt.Fprintf(w, filter+" : "+value+"\n")
 			}
 		}
-		companiesToReturn = updatedCompanies
+		companies = updatedCompanies
 	}
-	if len(companiesToReturn) == 0 {
+	if len(companies) == 0 {
 		fmt.Fprintf(w, "Found no companies\n")
 	} else {
-		fmt.Fprintf(w, "Companies found: %+v\n", companiesToReturn)
+		fmt.Fprintf(w, "Companies found: %+v\n", companies)
 	}
 }
 
@@ -118,20 +132,21 @@ func parseQuery(q string) map[string]string {
 func getCompany(w http.ResponseWriter, req *http.Request) {
 	// Retrieve the id from URL
 	url := req.URL.String()
-	id := strings.ReplaceAll(url, "/companies/", "")
+	stringId := strings.ReplaceAll(url, "/companies/", "")
+	id, err := strconv.ParseInt(stringId, 10, 64)
+	if err != nil {
+		fmt.Fprintf(w, "getCompany: %v", err)
+	}
 
-	var found bool
-	// find id from companyList
-	for _, company := range companyList {
-		companyId := company.Code
-		if id == companyId {
-			fmt.Fprintf(w, "Company found: %v\n", company)
-			found = true
+	var company Company // A company to hold data from returned row
+	row := db.QueryRow("SELECT * FROM album WHERE id = ?", id)
+	if err := row.Scan(&company.Name, &company.Country, &company.Website, &company.Phone); err != nil {
+		if err == sql.ErrNoRows {
+			fmt.Fprintf(w, "getCompany %v: no such company", id)
 		}
+		fmt.Fprintf(w, "getCompany %d: %v", id, err)
 	}
-	if !found {
-		fmt.Fprintf(w, "getCompany: Could not find the company with identifier "+id)
-	}
+	fmt.Fprintf(w, "%v", company)
 }
 
 // Update details of company with <id> if it exists

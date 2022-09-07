@@ -25,15 +25,16 @@ func addCompany(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// add company to databases
-	result, err := db.Exec("INSERT INTO companies (name, country, website, phone) VALUES (?, ?, ?)", company.Name, company.Country, company.Website, company.Phone)
+	result, err := db.Exec("INSERT INTO companies (name, country, website, phone) VALUES (?, ?, ?, ?)", company.Name, company.Country, company.Website, company.Phone)
 	if err != nil {
 		fmt.Fprintf(w, "addCompany: %v", err)
+		return
 	}
 	id, err := result.LastInsertId()
 	if err != nil {
 		fmt.Fprintf(w, "addCompany: %v", err)
 	}
-	fmt.Fprintf(w, "Succesfully added the company with id %d:\n"+string(messageBody), id)
+	fmt.Fprintf(w, "Added the company with id no. %v:\n"+string(messageBody), id)
 }
 
 // Retrieve all companies
@@ -43,44 +44,76 @@ func addCompany(w http.ResponseWriter, req *http.Request) {
 func getCompanies(w http.ResponseWriter, req *http.Request) {
 	var query string = req.URL.Query().Encode()
 	var propertyFilters map[string]string = parseQuery(query)
-	var companies []Company = companyList
+	var filteredCompanies []Company // Company slice to hold data returned from rows
 
-	//rows, err := db.Query("SELECT * FROM companies WHERE ")
+	if len(propertyFilters) == 0 {
+		rows, err := db.Query("SELECT * FROM companies")
+		if err != nil {
+			fmt.Fprintf(w, "getCompanies: %v", err)
+		}
+		defer rows.Close()
+		// Loop through rows, using Scan to assign column data to struct fields.
+		for rows.Next() {
+			var company Company
+			if err := rows.Scan(&company.Code, &company.Name, &company.Country, &company.Website, &company.Phone); err != nil {
+				fmt.Fprintf(w, "getCompanies: %v", err)
+			}
+			filteredCompanies = append(filteredCompanies, company)
+		}
+		// Format output into JSON
+		b, err := json.Marshal(filteredCompanies)
+		if err != nil {
+			fmt.Fprintf(w, "getCompanies: %v", err)
+		}
+		fmt.Fprintf(w, "Companies found:\n%v", string(b))
+	} else {
+		var properties []string = make([]string, len(propertyFilters))
+		var values []string = make([]string, len(propertyFilters))
 
-	for filter, value := range propertyFilters {
-		var updatedCompanies []Company
-		for _, company := range companies {
-			switch filter {
-			case "Name":
-				if company.Name == value {
-					updatedCompanies = append(updatedCompanies, company)
-				}
-			case "Code":
-				if company.Code == value {
-					updatedCompanies = append(updatedCompanies, company)
-				}
-			case "Country":
-				if company.Country == value {
-					updatedCompanies = append(updatedCompanies, company)
-				}
-			case "Website":
-				if company.Website == value {
-					updatedCompanies = append(updatedCompanies, company)
-				}
-			case "Phone":
-				if company.Phone == value {
-					updatedCompanies = append(updatedCompanies, company)
-				}
-			default:
-				//fmt.Fprintf(w, filter+" : "+value+"\n")
+		var index int
+		index = 0
+		for k := range propertyFilters {
+			properties[index] = k
+			index++
+		}
+
+		index = 0
+		for _, v := range propertyFilters {
+			values[index] = v
+			index++
+		}
+		var condition string = ""
+		for i := 0; i < len(properties); i++ {
+			condition += properties[i] + "='" + values[i] + "'"
+			if i != len(properties)-1 {
+				condition += " AND "
 			}
 		}
-		companies = updatedCompanies
-	}
-	if len(companies) == 0 {
-		fmt.Fprintf(w, "Found no companies\n")
-	} else {
-		fmt.Fprintf(w, "Companies found: %+v\n", companies)
+
+		rows, err := db.Query("SELECT * FROM companies WHERE " + condition)
+		if rows == nil { // Check if rows are empty to avoid nil pointer derefrence
+			fmt.Fprintf(w, "getCompanies: Could not find any companies satisfying the query, "+condition)
+			return
+		}
+		if err != nil {
+			fmt.Fprintf(w, "getCompanies: %v", err)
+			return
+		}
+		defer rows.Close()
+		// Loop through rows, using Scan to assign column data to struct fields.
+		for rows.Next() {
+			var company Company
+			if err := rows.Scan(&company.Name, &company.Code, &company.Country, &company.Website, &company.Phone); err != nil {
+				fmt.Fprintf(w, "getCompanies: %v", err)
+			}
+			filteredCompanies = append(filteredCompanies, company)
+		}
+		// Format output into JSON
+		b, err := json.Marshal(filteredCompanies)
+		if err != nil {
+			fmt.Fprintf(w, "getCompanies: %v", err)
+		}
+		fmt.Fprintf(w, "Companies found:\n%v", string(b))
 	}
 }
 
@@ -139,47 +172,47 @@ func getCompany(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var company Company // A company to hold data from returned row
-	row := db.QueryRow("SELECT * FROM album WHERE id = ?", id)
-	if err := row.Scan(&company.Name, &company.Country, &company.Website, &company.Phone); err != nil {
+	row := db.QueryRow("SELECT * FROM companies WHERE id = ?", id)
+	if err := row.Scan(&company.Code, &company.Name, &company.Country, &company.Website, &company.Phone); err != nil {
 		if err == sql.ErrNoRows {
 			fmt.Fprintf(w, "getCompany %v: no such company", id)
+		} else {
+			fmt.Fprintf(w, "getCompany %d: %v", id, err)
 		}
-		fmt.Fprintf(w, "getCompany %d: %v", id, err)
 	}
-	fmt.Fprintf(w, "%v", company)
+	// Format output into JSON
+	b, err := json.Marshal(company)
+	if err != nil {
+		fmt.Fprintf(w, "getCompany: %v", err)
+	}
+	fmt.Fprintf(w, "%v", string(b))
 }
 
 // Update details of company with <id> if it exists
 // Http request: PUT /companies/id
 func updateCompany(w http.ResponseWriter, req *http.Request) {
-	var updatedCompany Company
-
 	// Retrieve the id from URL
-	var url string = req.URL.String()
-	var id string = strings.ReplaceAll(url, "/companies/", "")
+	url := req.URL.String()
+	stringId := strings.ReplaceAll(url, "/companies/", "")
+	id, err := strconv.ParseInt(stringId, 10, 64)
 
+	var company Company
 	// Retrieve updated company details from body of request message
 	requestBody, err := io.ReadAll(req.Body)
 	if err != nil {
-		fmt.Fprintf(w, err.Error())
+		fmt.Fprintf(w, "updateCompany: %v", err)
 	}
-	err = json.Unmarshal(requestBody, &updatedCompany)
+	err = json.Unmarshal(requestBody, &company)
 	if err != nil {
-		fmt.Fprintf(w, err.Error())
+		fmt.Fprintf(w, "updateCompany: %v", err)
 	}
 
-	// find id in companyList
-	var found bool
-	for i, company := range companyList {
-		companyId := company.Code
-		if companyId == id {
-			companyList[i] = updatedCompany
-			found = true
-			fmt.Fprintf(w, "Succesfully updated company details: \n"+string(requestBody))
-		}
-	}
-	if !found {
-		fmt.Fprintf(w, "updateCompany: Could not find the company with the id "+id)
+	// Update old company with new company details
+	_, err = db.Exec("UPDATE companies SET name=?, country=?, website=?, phone=? WHERE id=?", company.Name, company.Country, company.Website, company.Phone, id)
+	if err != nil {
+		fmt.Fprintf(w, "updateCompany: %v", err)
+	} else {
+		fmt.Fprintf(w, "Updated company with id %d:\n"+string(requestBody), id)
 	}
 }
 
@@ -188,36 +221,32 @@ func updateCompany(w http.ResponseWriter, req *http.Request) {
 func deleteCompany(w http.ResponseWriter, req *http.Request) {
 	// Retrieve the id from URL
 	var url string = req.URL.String()
-	var id string = strings.ReplaceAll(url, "/companies/", "")
-
-	var found bool
-	var indexToDelete int
-	for i, company := range companyList {
-		companyId := company.Code
-		if companyId == id {
-			indexToDelete = i
-			found = true
-		}
+	var stringId string = strings.ReplaceAll(url, "/companies/", "")
+	id, err := strconv.ParseInt(stringId, 10, 64)
+	if err != nil {
+		fmt.Fprintf(w, "deleteCompany: %v", err)
 	}
-	// Delete element at indexToDelete
-	if found {
-		var removedCompany Company = companyList[indexToDelete]
-		companyList = remove(companyList, indexToDelete)
-		b, err := json.Marshal(removedCompany)
-		if err != nil {
-			fmt.Fprintf(w, "deleteCompany: "+err.Error())
-		} else {
-			fmt.Fprintf(w, "Succesfully removed company: \n"+string(b))
+
+	// Retrieve and store company data that will be deleted to be able to print to user
+	var company Company
+	row := db.QueryRow("SELECT * FROM companies WHERE id = ?", id)
+	if err := row.Scan(&company.Code, &company.Name, &company.Country, &company.Website, &company.Phone); err != nil {
+		if err == sql.ErrNoRows {
+			fmt.Fprintf(w, "deleteCompany: No company with the id %d", id)
+			return
 		}
+		fmt.Fprintf(w, "deleteCompany: %v", err)
+	}
+
+	// Delete company with id from database
+	_, err = db.Exec("DELETE FROM companies WHERE id = ?", id)
+	if err != nil {
+		fmt.Fprintf(w, "deleteCompany: %v", err)
 	} else {
-		fmt.Fprintf(w, "deleteCompany: Could not find company with identifier "+id)
+		b, err := json.Marshal(company)
+		if err != nil {
+			fmt.Fprintf(w, "deleteCompany: %v", err)
+		}
+		fmt.Fprintf(w, "Deleted company with id %d:\n%v", id, string(b))
 	}
-}
-
-// Given a list of companies, and in index to remove,
-// the following function returns a copy of the original
-// with company at the given index removed
-func remove(s []Company, i int) []Company {
-	s[i] = s[len(s)-1]
-	return s[:len(s)-1]
 }
